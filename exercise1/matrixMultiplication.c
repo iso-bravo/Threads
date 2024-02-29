@@ -2,69 +2,89 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <sys/wait.h>
 
 #define SIZE 1024
-#define NT 4
+#define NT 8
 
-int **createRandomMatrix(int,int);
+int **createRandomMatrix(int, int);
 void releaseMatrix(int **, int);
 void printMat(int **);
-void *Multiply(void *);
+void *multiply(void *);
 
-int **M1,**M2,**M3;
+int **M1, **M2, **M3;
+int size;
 
-int main(){
-    M1 = createRandomMatrix(SIZE,1);
-    M2 = createRandomMatrix(SIZE,1);
-    M3 = createRandomMatrix(SIZE,0);
+int main() {
+    size = SIZE;
+
+    M1 = createRandomMatrix(size, 1);
+    M2 = createRandomMatrix(size, 1);
+    M3 = createRandomMatrix(size, 0);
     pthread_t T[NT];
 
-    
-    wait(NULL);
+    int block_size = size / NT;
+
+    for (int i = 0; i < NT; i++) {
+        int *args = (int *)malloc(3 * sizeof(int));
+        args[0] = i * block_size;              
+        args[1] = (i + 1) * block_size;        
+        args[2] = size;                        
+        pthread_create(&T[i], NULL, multiply, (void *)args);
+    }
+
+    for (int i = 0; i < NT; i++) {
+        pthread_join(T[i], NULL);
+    }
+
+    printMat(M3);
+
+    releaseMatrix(M1, size);
+    releaseMatrix(M2, size);
+    releaseMatrix(M3, size);
+
     return 0;
 }
 
-int **createRandomMatrix(int size,int random){
-    int *Mat = (int *) malloc(sizeof(int *)*10);
-    int i,j;
-    for(i=0; i<size; i++)
-        Mat[i] = (int *) malloc(sizeof(int)*10);
-    
-    for(i=0; i<size; i++)
-        for(j=0;j<size; j++)
-            Mat[i][j] = (random)?rand() % 100 +1:0;
+void *multiply(void *arguments) {
+    int *args = (int *)arguments;
+    int start = args[0];
+    int end = args[1];
+    int matrix_size = args[2];
+    free(args);
+
+    for (int i = start; i < end; i++) {
+        for (int j = 0; j < matrix_size; j++) {
+            for (int k = 0; k < matrix_size; k++) {
+                M3[i][j] += M1[i][k] * M2[k][j];
+            }
+        }
+    }
+
+    pthread_exit(NULL);
+}
+
+int **createRandomMatrix(int size, int random) {
+    int **Mat = (int **)malloc(size * sizeof(int *));
+    for (int i = 0; i < size; i++)
+        Mat[i] = (int *)malloc(size * sizeof(int));
+
+    for (int i = 0; i < size; i++)
+        for (int j = 0; j < size; j++)
+            Mat[i][j] = (random) ? rand() % 100 + 1 : 0;
+
     return Mat;
 }
 
-void releaseMatrix(int **Mat, int size){
-    int i;
-    for(i=0; i<size; i++)
+void releaseMatrix(int **Mat, int size) {
+    for (int i = 0; i < size; i++)
         free(Mat[i]);
     free(Mat);
 }
 
-void printMat(int **M){
-    int i,j;
-    for(i=0; i<10; i++){
-        for(j=0;j<10; j++)
-            printf("%5d",M[i][j]);
+void printMat(int **M) {
+    for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 10; j++)
+            printf("%5d", M[i][j]);
         printf("\n");
     }
-
-}
-
-void *Multiply(void *id){
-    for (i = start ; i < end ; i++ )
-{
-    for (k = 0 ; k < 3 ; k++ ) 
-    {
-        temporal = 0 ;
-        for (j = 0 ; j < 2 ; j++ ) 
-                {                                   
-            temporal += mat[i][j] * mat2[j][k];
-            resultado[i][k] = temporal ;
-        }
-        }
-}
 }
